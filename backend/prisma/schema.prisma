@@ -1,0 +1,359 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Users & roles
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  DINER
+  RESTAURANT_ADMIN
+  PLATFORM_ADMIN
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  phone         String?  @unique
+  passwordHash  String
+  fullName      String
+  role          UserRole @default(DINER)
+  avatarUrl     String?
+  city          String? // diner's home city, used to default search/bulk-order eligibility
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  restaurantAdminOf RestaurantAdmin[]
+  bookings          Booking[]
+  bulkOrders        BulkOrder[]
+  reviews           Review[]
+  vouchersGiven     Voucher[]         @relation("VoucherPurchaser")
+  vouchersReceived  Voucher[]         @relation("VoucherRecipient")
+  payments          Payment[]
+}
+
+// Join table: which admins manage which restaurants (a restaurant can have multiple admins/staff)
+model RestaurantAdmin {
+  id           String     @id @default(uuid())
+  userId       String
+  restaurantId String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([userId, restaurantId])
+}
+
+// ---------------------------------------------------------------------------
+// Restaurants
+// ---------------------------------------------------------------------------
+
+enum RestaurantStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+}
+
+model Restaurant {
+  id                 String           @id @default(uuid())
+  name               String
+  description        String?
+  cuisineTypes       String[]
+  city               String
+  address            String
+  latitude           Float?
+  longitude          Float?
+  priceRange         Int // 1-4, like $ .. $$$$
+  photos             String[]
+  amenities          String[]
+  openingHours       Json // { mon: [{open:"10:00",close:"22:00"}], ... }
+  status             RestaurantStatus @default(PENDING_APPROVAL)
+  stripeAccountId    String? // Stripe Connect account for payouts
+  deliveryLinks      Json? // { grab: "https://...", foodpanda: "https://..." }
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  admins           RestaurantAdmin[]
+  menuItems        MenuItem[]
+  bulkPackages      BulkOrderPackage[]
+  tables           Table[]
+  bookings         Booking[]
+  bulkOrders       BulkOrder[]
+  reviews          Review[]
+  vouchers         Voucher[]
+  stats            RestaurantStats?
+  badges           RestaurantBadge[]
+
+  @@index([city])
+  @@index([status])
+}
+
+// Denormalized, nightly-recomputed rating/ranking data (see docs/ARCHITECTURE.md §3.5)
+model RestaurantStats {
+  restaurantId     String   @id
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  reviewCount      Int      @default(0)
+  averageRating    Float    @default(0)
+  weightedRating   Float    @default(0) // Bayesian weighted rating used for ranking
+  lastComputedAt   DateTime @default(now())
+}
+
+enum BadgeType {
+  RISING_STAR
+  GUEST_FAVORITE
+  TOP_RATED
+  PLATFORM_CHOICE
+}
+
+model RestaurantBadge {
+  id           String     @id @default(uuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  type         BadgeType
+  awardedAt    DateTime   @default(now())
+  revokedAt    DateTime?
+
+  @@unique([restaurantId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Menu & bulk-order packages
+// ---------------------------------------------------------------------------
+
+model MenuItem {
+  id           String     @id @default(uuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  priceCents   Int
+  currency     String     @default("USD")
+  category     String
+  photoUrl     String?
+  dietaryTags  String[] // vegan, halal, gluten-free, ...
+  isAvailable  Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+}
+
+// Per-head packages used specifically for bulk/event orders (weddings, birthdays, etc.)
+model BulkOrderPackage {
+  id            String     @id @default(uuid())
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  pricePerHeadCents Int
+  currency      String     @default("USD")
+  minGuests     Int
+  maxGuests     Int?
+  isAvailable   Boolean    @default(true)
+
+  bulkOrders BulkOrder[]
+}
+
+// ---------------------------------------------------------------------------
+// Tables / rooms & bookings
+// ---------------------------------------------------------------------------
+
+enum TableType {
+  TABLE
+  PRIVATE_ROOM
+  WHOLE_VENUE
+}
+
+model Table {
+  id           String     @id @default(uuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  type         TableType
+  name         String // "Table 4", "VIP Room 1", "Whole Venue"
+  capacity     Int
+  isActive     Boolean    @default(true)
+
+  bookings Booking[]
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Booking {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  restaurantId String
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
+  tableId      String
+  table        Table         @relation(fields: [tableId], references: [id])
+  partySize    Int
+  date         DateTime // date of the reservation
+  slotStart    DateTime // start time of the reserved slot
+  slotEnd      DateTime
+  status       BookingStatus @default(PENDING)
+  requiresPrepayment Boolean @default(false)
+  paymentId    String?       @unique
+  payment      Payment?      @relation(fields: [paymentId], references: [id])
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  review Review?
+
+  @@index([restaurantId, date])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Bulk / event orders
+// ---------------------------------------------------------------------------
+
+enum BulkOrderType {
+  WEDDING
+  BIRTHDAY
+  CORPORATE
+  DONATION
+  OTHER
+}
+
+enum BulkOrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+model BulkOrder {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  restaurantId     String
+  restaurant       Restaurant        @relation(fields: [restaurantId], references: [id])
+  packageId        String
+  package          BulkOrderPackage  @relation(fields: [packageId], references: [id])
+  type             BulkOrderType
+  guestCount       Int
+  eventDate        DateTime // must be >= createdAt + 72h, enforced in service layer
+  eventAddress     String
+  eventCity        String // must equal restaurant.city, enforced in service layer
+  donationRecipientName    String? // only for type = DONATION
+  donationRecipientAddress String?
+  subtotalCents    Int
+  platformFeeCents Int // 10% of subtotal, snapshotted at confirmation time
+  totalCents       Int
+  currency         String            @default("USD")
+  status           BulkOrderStatus   @default(PENDING_PAYMENT)
+  paymentId        String?           @unique
+  payment          Payment?          @relation(fields: [paymentId], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  review Review?
+
+  @@index([restaurantId, eventDate])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Vouchers
+// ---------------------------------------------------------------------------
+
+enum VoucherType {
+  GIFT // diner-to-diner gift voucher (fixed amount or specific item)
+  PROMOTIONAL // restaurant-issued free meal / discount for special occasions
+}
+
+model Voucher {
+  id              String      @id @default(uuid())
+  code            String      @unique
+  type            VoucherType
+  restaurantId    String? // null = platform-wide gift voucher usable at any participating restaurant
+  restaurant      Restaurant? @relation(fields: [restaurantId], references: [id])
+  purchaserId     String?
+  purchaser       User?       @relation("VoucherPurchaser", fields: [purchaserId], references: [id])
+  recipientId     String?
+  recipient       User?       @relation("VoucherRecipient", fields: [recipientId], references: [id])
+  valueCents      Int?        // for fixed-amount vouchers
+  menuItemId      String?     // for a specific-item voucher (e.g. "free dessert")
+  maxRedemptions  Int         @default(1)
+  redemptionCount Int         @default(0)
+  expiresAt       DateTime?
+  createdAt       DateTime    @default(now())
+
+  redemptions VoucherRedemption[]
+
+  @@index([restaurantId])
+}
+
+model VoucherRedemption {
+  id          String   @id @default(uuid())
+  voucherId   String
+  voucher     Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  redeemedBy  String // userId
+  redeemedAt  DateTime @default(now())
+  bookingId   String?
+  bulkOrderId String?
+}
+
+// ---------------------------------------------------------------------------
+// Reviews
+// ---------------------------------------------------------------------------
+
+model Review {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  bookingId    String?    @unique
+  booking      Booking?   @relation(fields: [bookingId], references: [id])
+  bulkOrderId  String?    @unique
+  bulkOrder    BulkOrder? @relation(fields: [bulkOrderId], references: [id])
+  rating       Int // 1-5, validated in service layer
+  comment      String?
+  photos       String[]
+  adminReply   String?
+  adminReplyAt DateTime?
+  helpfulCount Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([restaurantId])
+}
+
+// ---------------------------------------------------------------------------
+// Payments (Stripe Connect)
+// ---------------------------------------------------------------------------
+
+enum PaymentStatus {
+  REQUIRES_PAYMENT
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id])
+  stripePaymentIntentId String        @unique
+  amountCents           Int
+  applicationFeeCents   Int // platform's 10% cut, mirrors bulkOrder.platformFeeCents when applicable
+  currency              String        @default("USD")
+  status                PaymentStatus @default(REQUIRES_PAYMENT)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  booking   Booking?
+  bulkOrder BulkOrder?
+}

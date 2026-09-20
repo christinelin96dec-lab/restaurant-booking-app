@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "TableTrip",
+    "slug": "restaurant-booking-app",
+    "scheme": "restaurantapp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#0B3D91"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.restaurantapp.mobile"
+    },
+    "android": {
+      "package": "com.restaurantapp.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B3D91"
+      }
+    },
+    "plugins": ["expo-router"]
+  }
+}
