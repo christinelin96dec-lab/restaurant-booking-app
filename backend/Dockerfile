@@ -1,12 +1,15 @@
-# --- deps: install once, reused by both the build and (via prune) runtime stages
-FROM node:20-alpine AS deps
+# Debian-based (not Alpine) specifically because Prisma's engine-detection and
+# OpenSSL requirements are unreliable on Alpine's musl libc — this sidesteps a
+# whole class of "failed to detect libssl/openssl" / schema-engine-crash issues
+# that came up deploying on Alpine (see git history if curious).
+FROM node:20-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# --- build: compile TypeScript and generate the Prisma client
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
@@ -14,9 +17,10 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # --- runtime: minimal image, no build tooling
-FROM node:20-alpine AS runtime
+FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma

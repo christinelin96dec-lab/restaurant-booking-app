@@ -1,11 +1,10 @@
 generator client {
-  provider      = "prisma-client-js"
-  // "native" covers local dev; "linux-musl-openssl-3.0.x" is the engine Alpine-based
-  // Docker images (our Dockerfile's node:20-alpine) need — without pinning it,
-  // Prisma has to guess at container startup and can guess wrong, which shows up
-  // as the "failed to detect the libssl/openssl version" warning and can crash
-  // the app on its first real database query.
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  provider = "prisma-client-js"
+  // "native" covers local dev and the Debian-based Docker build (backend/Dockerfile).
+  // "debian-openssl-3.0.x" is pinned explicitly so the engine is baked in rather than
+  // guessed at container startup, and "linux-musl-openssl-3.0.x" is kept in case this
+  // ever runs on an Alpine host again.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
