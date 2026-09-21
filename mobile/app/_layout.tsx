@@ -50,7 +50,11 @@ export default function RootLayout() {
           <Stack.Screen name="restaurant/[id]" options={{ title: '' }} />
           <Stack.Screen name="booking/[restaurantId]" options={{ title: 'Book a table' }} />
           <Stack.Screen name="bulk-order/[restaurantId]" options={{ title: 'Bulk / event order' }} />
+          <Stack.Screen name="review/submit" options={{ title: 'Write a review' }} />
+          <Stack.Screen name="voucher/purchase" options={{ title: 'Buy a voucher' }} />
           <Stack.Screen name="admin/dashboard" options={{ title: 'Restaurant admin' }} />
+          <Stack.Screen name="admin/edit-restaurant" options={{ title: 'Edit restaurant' }} />
+          <Stack.Screen name="admin/menu-manager" options={{ title: 'Menu manager' }} />
         </Stack>
       </AuthGate>
     </QueryClientProvider>

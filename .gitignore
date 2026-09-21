@@ -8,6 +8,7 @@ yarn-error.log*
 backend/dist/
 backend/.env
 backend/prisma/*.db
+backend/*.tsbuildinfo
 
 # Mobile / Expo
 mobile/.expo/

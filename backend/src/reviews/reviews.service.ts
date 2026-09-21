@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 
@@ -24,6 +24,8 @@ export class ReviewsService {
         throw new BadRequestException('You can only review a completed booking');
       }
       restaurantId = booking.restaurantId;
+      const existing = await this.prisma.review.findUnique({ where: { bookingId: dto.bookingId } });
+      if (existing) throw new ConflictException('You have already reviewed this booking');
     } else {
       const order = await this.prisma.bulkOrder.findUnique({ where: { id: dto.bulkOrderId } });
       if (!order || order.userId !== userId) throw new NotFoundException('Bulk order not found');
@@ -31,6 +33,8 @@ export class ReviewsService {
         throw new BadRequestException('You can only review a completed bulk order');
       }
       restaurantId = order.restaurantId;
+      const existing = await this.prisma.review.findUnique({ where: { bulkOrderId: dto.bulkOrderId } });
+      if (existing) throw new ConflictException('You have already reviewed this order');
     }
 
     return this.prisma.review.create({

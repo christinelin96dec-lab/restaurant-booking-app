@@ -101,6 +101,20 @@ export class BulkOrdersService {
     });
   }
 
+  /** Restaurant admin's queue: every bulk order for a restaurant they manage. */
+  async findForRestaurant(restaurantId: string, adminUserId: string) {
+    const link = await this.prisma.restaurantAdmin.findUnique({
+      where: { userId_restaurantId: { userId: adminUserId, restaurantId } },
+    });
+    if (!link) throw new ForbiddenException('You do not manage this restaurant');
+
+    return this.prisma.bulkOrder.findMany({
+      where: { restaurantId },
+      include: { user: { select: { fullName: true, email: true } }, package: true },
+      orderBy: { eventDate: 'asc' },
+    });
+  }
+
   /** Called once the Stripe webhook confirms the PaymentIntent succeeded. */
   async confirmAfterPayment(bulkOrderId: string) {
     return this.prisma.bulkOrder.update({

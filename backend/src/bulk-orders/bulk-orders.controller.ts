@@ -18,6 +18,11 @@ export class BulkOrdersController {
     return this.bulkOrdersService.findMine(req.user.userId);
   }
 
+  @Get('restaurant/:restaurantId')
+  forRestaurant(@Param('restaurantId') restaurantId: string, @Req() req: any) {
+    return this.bulkOrdersService.findForRestaurant(restaurantId, req.user.userId);
+  }
+
   @Patch(':id/accept')
   accept(@Param('id') id: string, @Req() req: any) {
     return this.bulkOrdersService.accept(id, req.user.userId);

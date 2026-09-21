@@ -17,6 +17,7 @@ export interface MenuItem {
   currency: string;
   category: string;
   photoUrl?: string;
+  isAvailable?: boolean;
 }
 
 export interface BulkOrderPackage {
