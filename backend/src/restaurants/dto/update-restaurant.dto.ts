@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { IsArray, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class UpdateRestaurantDto {
@@ -31,7 +32,7 @@ export class UpdateRestaurantDto {
 
   @IsOptional()
   @IsObject()
-  openingHours?: Record<string, unknown>;
+  openingHours?: Prisma.InputJsonValue;
 
   // Name and city changes are flagged for platform moderation rather than
   // applied immediately — see docs/PRODUCT_SPEC.md §2.6.

@@ -1,5 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { RestaurantStatus } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BookingStatus, RestaurantStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SearchRestaurantsDto } from './dto/search-restaurants.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
@@ -39,6 +39,44 @@ export class RestaurantsService {
     });
     if (!restaurant) throw new NotFoundException('Restaurant not found');
     return restaurant;
+  }
+
+  /**
+   * Returns every active table/room for the restaurant along with the slots already
+   * booked on `dateStr` (YYYY-MM-DD), so the client can compute open time slots.
+   */
+  async getAvailability(restaurantId: string, dateStr: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      throw new BadRequestException('date must be in YYYY-MM-DD format');
+    }
+    const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    const tables = await this.prisma.table.findMany({
+      where: { restaurantId, isActive: true },
+    });
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        restaurantId,
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+        slotStart: { gte: dayStart, lt: dayEnd },
+      },
+      select: { tableId: true, slotStart: true, slotEnd: true },
+    });
+
+    return {
+      date: dateStr,
+      tables: tables.map((table) => ({
+        id: table.id,
+        name: table.name,
+        type: table.type,
+        capacity: table.capacity,
+        bookedSlots: bookings
+          .filter((b) => b.tableId === table.id)
+          .map((b) => ({ slotStart: b.slotStart, slotEnd: b.slotEnd })),
+      })),
+    };
   }
 
   async assertUserIsAdmin(restaurantId: string, userId: string) {

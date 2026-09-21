@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 import { colors, radii, spacing } from '@/theme/colors';
+import { useAuthStore } from '@/store/authStore';
 
 const MENU_ITEMS = [
   { label: 'Edit profile', route: '/profile/edit' },
@@ -11,12 +12,15 @@ const MENU_ITEMS = [
 ];
 
 export default function ProfileScreen() {
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.avatar} />
-        <Text style={styles.name}>Your Name</Text>
-        <Text style={styles.email}>you@example.com</Text>
+        <Text style={styles.name}>{user?.fullName ?? '...'}</Text>
+        <Text style={styles.email}>{user?.email ?? ''}</Text>
       </View>
       <View style={styles.menu}>
         {MENU_ITEMS.map((item) => (
@@ -27,6 +31,17 @@ export default function ProfileScreen() {
             </Pressable>
           </Link>
         ))}
+        <Pressable
+          style={styles.menuItem}
+          onPress={() =>
+            Alert.alert('Log out', 'Are you sure you want to log out?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Log out', style: 'destructive', onPress: logout },
+            ])
+          }
+        >
+          <Text style={[styles.menuLabel, { color: colors.danger }]}>Log out</Text>
+        </Pressable>
       </View>
     </View>
   );

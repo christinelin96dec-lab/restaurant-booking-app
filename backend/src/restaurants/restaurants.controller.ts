@@ -23,6 +23,11 @@ export class RestaurantsController {
     return this.restaurantsService.findByIdOrThrow(id);
   }
 
+  @Get(':id/availability')
+  availability(@Param('id') id: string, @Query('date') date: string) {
+    return this.restaurantsService.getAvailability(id, date);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   update(@Param('id') id: string, @Req() req: any, @Body() dto: UpdateRestaurantDto) {
