@@ -8,7 +8,12 @@ function buildService(existingBooking: any = null) {
     table: { findUnique: jest.fn().mockResolvedValue(TABLE) },
     booking: {
       findFirst: jest.fn().mockResolvedValue(existingBooking),
-      create: jest.fn().mockImplementation(({ data }) => ({ id: 'booking-1', ...data })),
+      create: jest.fn().mockImplementation(({ data }) => ({
+        id: 'booking-1',
+        ...data,
+        slotStart: new Date(data.slotStart),
+        restaurant: { name: 'Test Restaurant' },
+      })),
       findMany: jest.fn(),
       update: jest.fn(),
     },
@@ -16,9 +21,10 @@ function buildService(existingBooking: any = null) {
   // withLock in the real RedisService acquires a distributed lock around `fn`;
   // for unit tests we just run the callback directly.
   const redis = { withLock: jest.fn((_key: string, _ttl: number, fn: () => Promise<any>) => fn()) };
+  const notifications = { sendToUser: jest.fn() };
 
-  const service = new BookingsService(prisma as any, redis as any);
-  return { service, prisma, redis };
+  const service = new BookingsService(prisma as any, redis as any, notifications as any);
+  return { service, prisma, redis, notifications };
 }
 
 const baseDto = {
@@ -58,5 +64,16 @@ describe('BookingsService.create', () => {
       expect.objectContaining({ data: expect.objectContaining({ status: 'CONFIRMED', userId: 'user-1' }) }),
     );
     expect(booking.id).toBe('booking-1');
+  });
+
+  it('notifies the diner once the booking is confirmed', async () => {
+    const { service, notifications } = buildService(null);
+    const booking = await service.create('user-1', baseDto);
+    expect(notifications.sendToUser).toHaveBeenCalledWith(
+      'user-1',
+      'Booking confirmed',
+      expect.stringContaining('Test Restaurant'),
+      expect.objectContaining({ type: 'booking_confirmed', bookingId: booking.id }),
+    );
   });
 });

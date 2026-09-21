@@ -6,6 +6,7 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { CreateMenuItemDto, UpdateMenuItemDto } from './dto/menu-item.dto';
 import { CreateTableDto, UpdateTableDto } from './dto/table.dto';
 import { CreateBulkPackageDto, UpdateBulkPackageDto } from './dto/bulk-package.dto';
+import { StripeOnboardingLinkDto } from './dto/stripe-onboarding.dto';
 
 @Controller('restaurants')
 export class RestaurantsController {
@@ -116,5 +117,21 @@ export class RestaurantsController {
   @UseGuards(JwtAuthGuard)
   deleteBulkPackage(@Param('id') id: string, @Param('packageId') packageId: string, @Req() req: any) {
     return this.restaurantsService.deleteBulkPackage(id, packageId, req.user.userId);
+  }
+
+  // --- Stripe Connect onboarding (payouts) -----------------------------------
+
+  @Post(':id/stripe/onboarding-link')
+  @UseGuards(JwtAuthGuard)
+  createStripeOnboardingLink(@Param('id') id: string, @Req() req: any, @Body() dto: StripeOnboardingLinkDto) {
+    const refreshUrl = dto.refreshUrl ?? 'restaurantapp://admin/stripe-connect';
+    const returnUrl = dto.returnUrl ?? 'restaurantapp://admin/stripe-connect';
+    return this.restaurantsService.createStripeOnboardingLink(id, req.user.userId, refreshUrl, returnUrl);
+  }
+
+  @Get(':id/stripe/status')
+  @UseGuards(JwtAuthGuard)
+  getStripeStatus(@Param('id') id: string, @Req() req: any) {
+    return this.restaurantsService.getStripeStatus(id, req.user.userId);
   }
 }

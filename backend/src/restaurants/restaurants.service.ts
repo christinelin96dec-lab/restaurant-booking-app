@@ -6,10 +6,14 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { CreateMenuItemDto, UpdateMenuItemDto } from './dto/menu-item.dto';
 import { CreateTableDto, UpdateTableDto } from './dto/table.dto';
 import { CreateBulkPackageDto, UpdateBulkPackageDto } from './dto/bulk-package.dto';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class RestaurantsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly payments: PaymentsService,
+  ) {}
 
   async search(query: SearchRestaurantsDto) {
     return this.prisma.restaurant.findMany({
@@ -162,6 +166,39 @@ export class RestaurantsService {
     await this.assertBelongsToRestaurant('bulkOrderPackage', packageId, restaurantId);
     await this.prisma.bulkOrderPackage.update({ where: { id: packageId }, data: { isAvailable: false } });
     return { deleted: true };
+  }
+
+  // --- Stripe Connect onboarding (payouts) -----------------------------------
+
+  /**
+   * Returns a fresh onboarding link for the restaurant's Stripe Express account,
+   * creating the account first if this restaurant doesn't have one yet.
+   * The admin opens the returned URL in a browser to complete Stripe's KYC flow —
+   * bulk orders are blocked until this restaurant has a stripeAccountId (see
+   * BulkOrdersService.create).
+   */
+  async createStripeOnboardingLink(restaurantId: string, userId: string, refreshUrl: string, returnUrl: string) {
+    await this.assertUserIsAdmin(restaurantId, userId);
+    const restaurant = await this.prisma.restaurant.findUniqueOrThrow({ where: { id: restaurantId } });
+
+    let accountId = restaurant.stripeAccountId;
+    if (!accountId) {
+      accountId = await this.payments.createConnectedAccount();
+      await this.prisma.restaurant.update({ where: { id: restaurantId }, data: { stripeAccountId: accountId } });
+    }
+
+    const url = await this.payments.createOnboardingLink(accountId, refreshUrl, returnUrl);
+    return { url };
+  }
+
+  async getStripeStatus(restaurantId: string, userId: string) {
+    await this.assertUserIsAdmin(restaurantId, userId);
+    const restaurant = await this.prisma.restaurant.findUniqueOrThrow({ where: { id: restaurantId } });
+    if (!restaurant.stripeAccountId) {
+      return { connected: false, chargesEnabled: false, payoutsEnabled: false, detailsSubmitted: false };
+    }
+    const status = await this.payments.getAccountStatus(restaurant.stripeAccountId);
+    return { connected: true, ...status };
   }
 
   private async assertBelongsToRestaurant(

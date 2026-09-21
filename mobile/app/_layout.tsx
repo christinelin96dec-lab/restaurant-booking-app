@@ -55,6 +55,8 @@ export default function RootLayout() {
           <Stack.Screen name="admin/dashboard" options={{ title: 'Restaurant admin' }} />
           <Stack.Screen name="admin/edit-restaurant" options={{ title: 'Edit restaurant' }} />
           <Stack.Screen name="admin/menu-manager" options={{ title: 'Menu manager' }} />
+          <Stack.Screen name="admin/tables-manager" options={{ title: 'Tables & rooms' }} />
+          <Stack.Screen name="admin/stripe-connect" options={{ title: 'Payouts' }} />
         </Stack>
       </AuthGate>
     </QueryClientProvider>

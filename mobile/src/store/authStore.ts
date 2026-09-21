@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { apiClient, setAuthToken } from '@/api/client';
+import { registerPushToken } from '@/notifications/registerPushToken';
 
 const TOKEN_KEY = 'auth_token';
 
@@ -38,6 +39,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         setAuthToken(token);
         const user = await loadUser();
         set({ token, user });
+        registerPushToken().catch(() => {});
       }
     } catch {
       // Stored token is invalid/expired — fall through to logged-out state.
@@ -54,6 +56,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     setAuthToken(data.accessToken);
     const user = await loadUser();
     set({ token: data.accessToken, user });
+    registerPushToken().catch(() => {});
   },
 
   signup: async (email, password, fullName) => {
@@ -62,6 +65,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     setAuthToken(data.accessToken);
     const user = await loadUser();
     set({ token: data.accessToken, user });
+    registerPushToken().catch(() => {});
   },
 
   logout: async () => {

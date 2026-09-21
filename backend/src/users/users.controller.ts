@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 
@@ -18,5 +18,10 @@ export class UsersController {
     @Body() body: { fullName?: string; phone?: string; city?: string; avatarUrl?: string },
   ) {
     return this.usersService.updateProfile(req.user.userId, body);
+  }
+
+  @Post('me/push-token')
+  registerPushToken(@Req() req: any, @Body() body: { token: string }) {
+    return this.usersService.setPushToken(req.user.userId, body.token);
   }
 }

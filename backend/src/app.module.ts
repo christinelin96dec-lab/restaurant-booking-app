@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
@@ -13,6 +14,7 @@ import { VouchersModule } from './vouchers/vouchers.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BadgesModule } from './badges/badges.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { RolesGuard } from './auth/roles.guard';
 
 @Module({
@@ -21,6 +23,7 @@ import { RolesGuard } from './auth/roles.guard';
     ScheduleModule.forRoot(),
     PrismaModule,
     RedisModule,
+    NotificationsModule,
     AuthModule,
     UsersModule,
     RestaurantsModule,
@@ -30,6 +33,7 @@ import { RolesGuard } from './auth/roles.guard';
     ReviewsModule,
     PaymentsModule,
     BadgesModule,
+    UploadsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: RolesGuard }],
 })

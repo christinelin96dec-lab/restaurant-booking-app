@@ -41,4 +41,9 @@ export class UsersService {
   updateProfile(id: string, data: { fullName?: string; phone?: string; city?: string; avatarUrl?: string }) {
     return this.prisma.user.update({ where: { id }, data, select: PUBLIC_USER_SELECT });
   }
+
+  async setPushToken(id: string, token: string) {
+    await this.prisma.user.update({ where: { id }, data: { pushToken: token } });
+    return { ok: true };
+  }
 }

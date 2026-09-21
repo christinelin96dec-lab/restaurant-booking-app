@@ -35,9 +35,10 @@ function buildService(overrides: { restaurant?: any; pkg?: any } = {}) {
       clientSecret: 'secret_123',
     }),
   };
+  const notifications = { sendToUser: jest.fn(), sendToRestaurantAdmins: jest.fn() };
   const config = { get: (_key: string, def?: string) => def };
 
-  const service = new BulkOrdersService(prisma as any, payments as any, config as any);
+  const service = new BulkOrdersService(prisma as any, payments as any, notifications as any, config as any);
   return { service, prisma, payments };
 }
 

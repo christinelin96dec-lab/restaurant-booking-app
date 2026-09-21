@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 
 function generateCode(): string {
@@ -9,10 +10,13 @@ function generateCode(): string {
 
 @Injectable()
 export class VouchersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
-  create(purchaserId: string, dto: CreateVoucherDto) {
-    return this.prisma.voucher.create({
+  async create(purchaserId: string, dto: CreateVoucherDto) {
+    const voucher = await this.prisma.voucher.create({
       data: {
         code: generateCode(),
         type: dto.type,
@@ -25,6 +29,17 @@ export class VouchersService {
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
       },
     });
+
+    if (dto.recipientId && dto.recipientId !== purchaserId) {
+      await this.notifications.sendToUser(
+        dto.recipientId,
+        'You received a gift voucher! 🎁',
+        `Someone sent you a voucher worth ${((dto.valueCents ?? 0) / 100).toFixed(2)} — code ${voucher.code}.`,
+        { type: 'voucher_gifted', voucherId: voucher.id },
+      );
+    }
+
+    return voucher;
   }
 
   /** Restaurant-issued promotional vouchers (free meals for special occasions) skip the purchaser field. */

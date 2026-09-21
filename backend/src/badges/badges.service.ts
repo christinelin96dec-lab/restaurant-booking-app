@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { BadgeType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const MIN_REVIEW_THRESHOLD = 20; // `m` in the Bayesian formula, see docs/PRODUCT_SPEC.md §6
 
@@ -19,11 +20,21 @@ const BADGE_RULES: BadgeRule[] = [
   { type: BadgeType.RISING_STAR, minAverage: 4.0, minReviews: 10 },
 ];
 
+const BADGE_LABELS: Record<BadgeType, string> = {
+  [BadgeType.RISING_STAR]: 'Rising Star',
+  [BadgeType.GUEST_FAVORITE]: 'Guest Favorite',
+  [BadgeType.TOP_RATED]: 'Top Rated',
+  [BadgeType.PLATFORM_CHOICE]: 'Platform Choice',
+};
+
 @Injectable()
 export class BadgesService {
   private readonly logger = new Logger(BadgesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async recomputeAll() {
@@ -73,6 +84,12 @@ export class BadgesService {
 
       if (shouldHave && !existing) {
         await this.prisma.restaurantBadge.create({ data: { restaurantId, type: rule.type } });
+        await this.notifications.sendToRestaurantAdmins(
+          restaurantId,
+          'New badge earned! 🏅',
+          `Your restaurant just earned the "${BADGE_LABELS[rule.type]}" badge.`,
+          { type: 'badge_awarded', restaurantId, badgeType: rule.type },
+        );
       } else if (!shouldHave && existing && !existing.revokedAt) {
         await this.prisma.restaurantBadge.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
       } else if (shouldHave && existing?.revokedAt) {

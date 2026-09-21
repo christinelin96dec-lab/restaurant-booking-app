@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { colors, radii, spacing } from '@/theme/colors';
+import { pickAndUploadImage } from '@/utils/uploadImage';
 import type { MenuItem } from '@/api/types';
 
 export default function MenuManagerScreen() {
@@ -18,8 +19,22 @@ export default function MenuManagerScreen() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState('');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['menu-items', restaurantId] });
+
+  const onPickPhoto = async () => {
+    setIsUploadingPhoto(true);
+    try {
+      const url = await pickAndUploadImage('menu-items');
+      if (url) setPhotoUrl(url);
+    } catch (err: any) {
+      Alert.alert('Could not upload photo', err?.message ?? 'Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async () =>
@@ -27,11 +42,13 @@ export default function MenuManagerScreen() {
         name,
         category,
         priceCents: Math.round(Number(price) * 100),
+        photoUrl: photoUrl ?? undefined,
       }),
     onSuccess: () => {
       setName('');
       setCategory('');
       setPrice('');
+      setPhotoUrl(null);
       invalidate();
     },
     onError: (err: any) => Alert.alert('Could not add item', err?.response?.data?.message ?? 'Please try again.'),
@@ -55,6 +72,13 @@ export default function MenuManagerScreen() {
         <TextInput value={name} onChangeText={setName} placeholder="Name" style={styles.input} placeholderTextColor={colors.textSecondary} />
         <TextInput value={category} onChangeText={setCategory} placeholder="Category (e.g. Curries)" style={styles.input} placeholderTextColor={colors.textSecondary} />
         <TextInput value={price} onChangeText={setPrice} placeholder="Price ($)" keyboardType="decimal-pad" style={styles.input} placeholderTextColor={colors.textSecondary} />
+        <Pressable style={styles.photoPicker} onPress={onPickPhoto} disabled={isUploadingPhoto}>
+          {photoUrl ? (
+            <Image source={{ uri: photoUrl }} style={styles.photoPreview} />
+          ) : (
+            <Text style={styles.photoPickerText}>{isUploadingPhoto ? 'Uploading...' : '+ Add photo (optional)'}</Text>
+          )}
+        </Pressable>
         <Pressable
           style={styles.addButton}
           onPress={() => createMutation.mutate()}
@@ -70,6 +94,7 @@ export default function MenuManagerScreen() {
         contentContainerStyle={{ padding: spacing.md, gap: spacing.sm }}
         renderItem={({ item }) => (
           <View style={styles.itemCard}>
+            {item.photoUrl && <Image source={{ uri: item.photoUrl }} style={styles.itemThumbnail} />}
             <View style={{ flex: 1 }}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemMeta}>
@@ -97,9 +122,13 @@ const styles = StyleSheet.create({
   form: { backgroundColor: colors.surface, padding: spacing.md, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
   label: { fontWeight: '700', color: colors.textPrimary },
   input: { backgroundColor: colors.background, borderRadius: radii.sm, borderWidth: 1, borderColor: colors.border, padding: spacing.sm },
+  photoPicker: { backgroundColor: colors.background, borderRadius: radii.sm, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed', height: 80, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  photoPickerText: { color: colors.textSecondary, fontSize: 13 },
+  photoPreview: { width: '100%', height: '100%' },
   addButton: { backgroundColor: colors.primary, borderRadius: radii.sm, padding: spacing.sm, alignItems: 'center' },
   addButtonText: { color: '#fff', fontWeight: '600' },
   itemCard: { backgroundColor: colors.surface, borderRadius: radii.md, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  itemThumbnail: { width: 48, height: 48, borderRadius: radii.sm, backgroundColor: colors.border },
   itemName: { fontWeight: '700', color: colors.textPrimary },
   itemMeta: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
   toggleLink: { color: colors.primary, fontWeight: '600', fontSize: 12 },

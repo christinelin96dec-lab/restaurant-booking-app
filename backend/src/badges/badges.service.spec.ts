@@ -23,8 +23,9 @@ function buildService() {
       update: jest.fn(),
     },
   };
-  const service = new BadgesService(prisma as any);
-  return { service, prisma };
+  const notifications = { sendToRestaurantAdmins: jest.fn(), sendToUser: jest.fn() };
+  const service = new BadgesService(prisma as any, notifications as any);
+  return { service, prisma, notifications };
 }
 
 describe('BadgesService.recomputeAll', () => {
@@ -42,13 +43,19 @@ describe('BadgesService.recomputeAll', () => {
     expect(upsertArgsForA.update.reviewCount).toBe(12);
   });
 
-  it('awards RISING_STAR to a restaurant that clears the threshold', async () => {
-    const { service, prisma } = buildService();
+  it('awards RISING_STAR to a restaurant that clears the threshold, and notifies its admins', async () => {
+    const { service, prisma, notifications } = buildService();
     await service.recomputeAll();
 
     expect(prisma.restaurantBadge.create).toHaveBeenCalledWith({
       data: { restaurantId: 'restaurant-a', type: BadgeType.RISING_STAR },
     });
+    expect(notifications.sendToRestaurantAdmins).toHaveBeenCalledWith(
+      'restaurant-a',
+      expect.any(String),
+      expect.stringContaining('Rising Star'),
+      expect.objectContaining({ type: 'badge_awarded' }),
+    );
   });
 
   it('does not award any badge to a restaurant below the review-count minimum', async () => {
@@ -71,7 +78,8 @@ describe('BadgesService.recomputeAll', () => {
         update: jest.fn(),
       },
     };
-    const service = new BadgesService(prisma as any);
+    const notifications = { sendToRestaurantAdmins: jest.fn(), sendToUser: jest.fn() };
+    const service = new BadgesService(prisma as any, notifications as any);
     await service.recomputeAll();
 
     expect(prisma.restaurantBadge.update).toHaveBeenCalledWith({

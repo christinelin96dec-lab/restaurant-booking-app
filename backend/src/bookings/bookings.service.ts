@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { BookingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(userId: string, dto: CreateBookingDto) {
@@ -23,7 +25,7 @@ export class BookingsService {
     const lockKey = `booking-lock:${dto.tableId}:${dto.date}:${dto.slotStart}`;
 
     // See docs/ARCHITECTURE.md §3.1 — lock + re-check inside the lock to avoid double-booking.
-    return this.redis.withLock(lockKey, 10_000, async () => {
+    const booking = await this.redis.withLock(lockKey, 10_000, async () => {
       const conflict = await this.prisma.booking.findFirst({
         where: {
           tableId: dto.tableId,
@@ -48,8 +50,18 @@ export class BookingsService {
           notes: dto.notes,
           status: BookingStatus.CONFIRMED,
         },
+        include: { restaurant: { select: { name: true } } },
       });
     });
+
+    await this.notifications.sendToUser(
+      userId,
+      'Booking confirmed',
+      `Your table at ${booking.restaurant.name} is booked for ${booking.slotStart.toDateString()}.`,
+      { type: 'booking_confirmed', bookingId: booking.id },
+    );
+
+    return booking;
   }
 
   findMine(userId: string) {

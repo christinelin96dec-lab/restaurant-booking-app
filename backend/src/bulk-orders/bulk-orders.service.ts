@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { BulkOrderStatus, BulkOrderType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBulkOrderDto } from './dto/create-bulk-order.dto';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class BulkOrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
+    private readonly notifications: NotificationsService,
     config: ConfigService,
   ) {
     this.minLeadHours = Number(config.get<string>('BULK_ORDER_MIN_LEAD_HOURS', '72'));
@@ -115,14 +117,6 @@ export class BulkOrdersService {
     });
   }
 
-  /** Called once the Stripe webhook confirms the PaymentIntent succeeded. */
-  async confirmAfterPayment(bulkOrderId: string) {
-    return this.prisma.bulkOrder.update({
-      where: { id: bulkOrderId },
-      data: { status: BulkOrderStatus.CONFIRMED },
-    });
-  }
-
   async accept(id: string, adminUserId: string) {
     const order = await this.getForAdmin(id, adminUserId);
     if (order.status !== BulkOrderStatus.CONFIRMED) {
@@ -139,7 +133,14 @@ export class BulkOrdersService {
     if (order.payment) {
       await this.payments.refund(order.payment.stripePaymentIntentId);
     }
-    return this.prisma.bulkOrder.update({ where: { id }, data: { status: BulkOrderStatus.REJECTED } });
+    const rejected = await this.prisma.bulkOrder.update({ where: { id }, data: { status: BulkOrderStatus.REJECTED } });
+    await this.notifications.sendToUser(
+      order.userId,
+      'Bulk order declined',
+      'The restaurant was unable to accommodate your order — your payment has been refunded in full.',
+      { type: 'bulk_order_rejected', bulkOrderId: order.id },
+    );
+    return rejected;
   }
 
   private async getForAdmin(id: string, adminUserId: string) {

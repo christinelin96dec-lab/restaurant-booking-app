@@ -26,6 +26,7 @@ model User {
   role          UserRole @default(DINER)
   avatarUrl     String?
   city          String? // diner's home city, used to default search/bulk-order eligibility
+  pushToken     String? // Expo push token, registered on login; used for booking/voucher/badge alerts
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

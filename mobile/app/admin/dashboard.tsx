@@ -66,6 +66,16 @@ export default function AdminDashboardScreen() {
               <Text style={styles.actionButtonText}>Manage menu</Text>
             </Pressable>
           </Link>
+          <Link href={{ pathname: '/admin/tables-manager', params: { restaurantId: restaurant.id } }} asChild>
+            <Pressable style={styles.actionButton}>
+              <Text style={styles.actionButtonText}>Tables & rooms</Text>
+            </Pressable>
+          </Link>
+          <Link href={{ pathname: '/admin/stripe-connect', params: { restaurantId: restaurant.id } }} asChild>
+            <Pressable style={styles.actionButton}>
+              <Text style={styles.actionButtonText}>Payouts</Text>
+            </Pressable>
+          </Link>
         </View>
       </View>
 
@@ -103,7 +113,7 @@ const styles = StyleSheet.create({
   headerCard: { backgroundColor: colors.surface, borderRadius: radii.md, padding: spacing.md, gap: 4 },
   restaurantName: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
   restaurantMeta: { color: colors.textSecondary },
-  actionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
   actionButton: { backgroundColor: colors.primary, borderRadius: radii.sm, paddingHorizontal: spacing.sm, paddingVertical: 8 },
   actionButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
