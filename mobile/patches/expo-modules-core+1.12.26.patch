@@ -1,0 +1,36 @@
+diff --git a/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle b/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+index bcf9b00..ef241d8 100644
+--- a/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
++++ b/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+@@ -78,16 +78,23 @@ ext.useExpoPublishing = {
+     }
+   }
+ 
++  // Patched: query the "release" SoftwareComponent reactively instead of accessing
++  // components.release directly inside afterEvaluate. With current AGP/Gradle,
++  // the component isn't guaranteed to exist by the time this afterEvaluate runs,
++  // which throws "Could not get unknown property 'release'". components.matching(...).all
++  // fires immediately if it already exists, or later once AGP registers it.
+   project.afterEvaluate {
+-    publishing {
+-      publications {
+-        release(MavenPublication) {
+-          from components.release
++    project.components.matching { it.name == "release" }.all { releaseComponent ->
++      publishing {
++        publications {
++          release(MavenPublication) {
++            from releaseComponent
++          }
+         }
+-      }
+-      repositories {
+-        maven {
+-          url = mavenLocal().url
++        repositories {
++          maven {
++            url = mavenLocal().url
++          }
+         }
+       }
+     }

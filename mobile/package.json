@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.51.0",
@@ -19,6 +20,7 @@
     "expo-device": "~6.0.2",
     "expo-image-picker": "~15.1.0",
     "expo-linear-gradient": "~13.0.2",
+    "expo-linking": "~6.3.1",
     "expo-notifications": "~0.28.19",
     "expo-router": "~3.5.0",
     "expo-secure-store": "~13.0.1",
@@ -32,6 +34,7 @@
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@types/react": "~18.2.79",
+    "patch-package": "^8.0.1",
     "typescript": "^5.5.4"
   }
 }
