@@ -17,6 +17,12 @@
         "EXPO_PUBLIC_API_URL": "https://restaurant-booking-app-yche.onrender.com"
       }
     },
+    "preview-ios-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      }
+    },
     "production": {
       "autoIncrement": true,
       "env": {
