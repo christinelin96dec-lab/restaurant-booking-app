@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RestaurantsService } from './restaurants.service';
 import { SearchRestaurantsDto } from './dto/search-restaurants.dto';
@@ -10,7 +11,10 @@ import { StripeOnboardingLinkDto } from './dto/stripe-onboarding.dto';
 
 @Controller('restaurants')
 export class RestaurantsController {
-  constructor(private readonly restaurantsService: RestaurantsService) {}
+  constructor(
+    private readonly restaurantsService: RestaurantsService,
+    private readonly config: ConfigService,
+  ) {}
 
   @Get()
   search(@Query() query: SearchRestaurantsDto) {
@@ -124,8 +128,15 @@ export class RestaurantsController {
   @Post(':id/stripe/onboarding-link')
   @UseGuards(JwtAuthGuard)
   createStripeOnboardingLink(@Param('id') id: string, @Req() req: any, @Body() dto: StripeOnboardingLinkDto) {
-    const refreshUrl = dto.refreshUrl ?? 'restaurantapp://admin/stripe-connect';
-    const returnUrl = dto.returnUrl ?? 'restaurantapp://admin/stripe-connect';
+    // Stripe's Account Links API requires real http(s) URLs — a custom app deep-link
+    // scheme (e.g. restaurantapp://...) is rejected outright ("Not a valid URL").
+    // TODO: once the mobile app registers a universal/app link, point these at that
+    // instead so the browser hands control back to the app automatically; for now
+    // they land on the API host itself, which is syntactically valid and sufficient
+    // to complete Stripe's onboarding flow (the admin returns to the app manually).
+    const appBaseUrl = this.config.get<string>('APP_BASE_URL', 'https://restaurant-booking-app-yche.onrender.com');
+    const refreshUrl = dto.refreshUrl ?? `${appBaseUrl}/restaurants/${id}/stripe/status`;
+    const returnUrl = dto.returnUrl ?? `${appBaseUrl}/restaurants/${id}/stripe/status`;
     return this.restaurantsService.createStripeOnboardingLink(id, req.user.userId, refreshUrl, returnUrl);
   }
 
