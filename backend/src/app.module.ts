@@ -15,6 +15,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BadgesModule } from './badges/badges.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { InternalModule } from './internal/internal.module'; // TEMPORARY — see internal.module.ts
 import { RolesGuard } from './auth/roles.guard';
 
 @Module({
@@ -34,6 +35,7 @@ import { RolesGuard } from './auth/roles.guard';
     PaymentsModule,
     BadgesModule,
     UploadsModule,
+    InternalModule, // TEMPORARY
   ],
   providers: [{ provide: APP_GUARD, useClass: RolesGuard }],
 })
