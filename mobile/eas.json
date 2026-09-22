@@ -14,13 +14,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://staging-api.example.com"
+        "EXPO_PUBLIC_API_URL": "https://restaurant-booking-app-yche.onrender.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.example.com"
+        "EXPO_PUBLIC_API_URL": "https://restaurant-booking-app-yche.onrender.com"
       }
     }
   },

@@ -1,10 +1,32 @@
 # Deployment Guide
 
-This describes how to actually ship what's in this repo. Nothing here has been executed — it
-documents the steps for whoever has the real accounts/credentials (Stripe, a cloud host, Apple/
-Google developer accounts) to run them. Everything referenced (Dockerfile, CI workflow, seed
-script, migrations) has been built and validated locally as part of this repo; only the "point it
-at real infrastructure and press go" part remains.
+## Current live deployment
+
+The backend is actually deployed and working, not just documented:
+
+- **API**: `https://restaurant-booking-app-yche.onrender.com` — Render free tier (spins down
+  after 15 min idle; first request after that takes ~30-60s to wake up).
+- **Database**: Neon Postgres (free tier). Migrations applied automatically at container start.
+- **Redis**: Upstash (free tier), used for the booking double-book lock.
+- **Stripe**: Connect is enabled on the test-mode account, and a webhook endpoint pointing at
+  `/webhooks/stripe` (subscribed to `payment_intent.succeeded`) is created and verified working —
+  its signing secret is set as `STRIPE_WEBHOOK_SECRET` on Render.
+- **`mobile/eas.json`**: `preview` and `production` build profiles point `EXPO_PUBLIC_API_URL` at
+  the live URL above.
+
+**The one piece still needed**: `STRIPE_SECRET_KEY` on Render is a placeholder
+(`sk_test_placeholder`). Stripe doesn't allow creating a standard secret key
+via its API for security reasons — it can only be copied from the Stripe Dashboard by a human.
+Get it from **Dashboard → Developers → API keys → reveal the test Secret key** and set it as the
+`STRIPE_SECRET_KEY` environment variable on the Render service. Everything else (bookings,
+reviews, discovery, vouchers, auth) already works without it; only Stripe-backed flows (bulk-order
+payments, restaurant Stripe onboarding) are blocked until that key is in place.
+
+---
+
+This section on down describes how to ship this more generally — for redeploying, scaling past
+the free tiers above, or standing up a second environment. Everything referenced (Dockerfile, CI
+workflow, seed script, migrations) has been built and validated as part of this repo.
 
 ## 1. Backend
 
@@ -122,8 +144,13 @@ behind a manual trigger or a release tag instead.
 
 ## 4. What's still a placeholder
 
+- `STRIPE_SECRET_KEY` on the live Render deployment (see "Current live deployment" above) — this
+  is the one blocking item.
 - `stripeAccountId: 'acct_seed_demo'` in the seed script isn't a real Stripe account — bulk orders
   against the seeded restaurant will fail at the Stripe API call until a real restaurant admin
   completes onboarding (§1.7).
 - No app icon/splash assets — `mobile/app.json` just sets a background color.
 - No rate limiting / WAF in front of the API — add one at your host/CDN layer before launch.
+- Mobile app hasn't been built or run through EAS yet — `mobile/eas.json` is configured and
+  pointed at the live backend, but no build has actually been triggered (needs the Expo/EAS
+  connector or an `eas login` session — see README for how that was connected for Render/Stripe).
