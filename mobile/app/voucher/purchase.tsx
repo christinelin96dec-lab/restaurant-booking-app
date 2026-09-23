@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';

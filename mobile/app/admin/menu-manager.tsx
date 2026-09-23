@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';

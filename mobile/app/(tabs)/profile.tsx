@@ -1,4 +1,5 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { Link } from 'expo-router';
 import { colors, radii, spacing } from '@/theme/colors';
 import { useAuthStore } from '@/store/authStore';

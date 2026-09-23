@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { Link, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/theme/colors';
 import { useAuthStore } from '@/store/authStore';

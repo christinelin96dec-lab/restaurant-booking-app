@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@/storage/tokenStorage';
 import { apiClient, setAuthToken } from '@/api/client';
 import { registerPushToken } from '@/notifications/registerPushToken';
 
