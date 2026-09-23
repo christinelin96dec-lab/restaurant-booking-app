@@ -1,5 +1,6 @@
-// Agoda-inspired palette: confident primary blue, warm accent for ratings/CTAs,
-// generous whitespace, rounded cards. Swap these for brand colors later.
+// Travel-booking palette: confident navy for chrome, a distinct rating-score
+// green (the "8.7 Excellent" badge), warm coral for CTAs, generous
+// whitespace, rounded cards. Swap these for brand colors later.
 export const colors = {
   primary: '#0B3D91',
   primaryDark: '#082A66',
@@ -12,6 +13,12 @@ export const colors = {
   textSecondary: '#6B7280',
   success: '#1AAE6F',
   danger: '#E23744',
+  // Rating-score badge, scaled by quality band (see RatingBadge)
+  ratingExceptional: '#0B8457',
+  ratingExcellent: '#1AAE6F',
+  ratingGood: '#5FA436',
+  ratingAverage: '#E1A23B',
+  ratingPoor: '#C4551E',
 };
 
 export const radii = { sm: 8, md: 14, lg: 20, pill: 999 };
